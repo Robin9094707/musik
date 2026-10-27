@@ -33,8 +33,11 @@ final class MusicUITests: XCTestCase {
         let app = launch()
         let title = app.staticTexts["Afterglow"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 15)); title.tap()
-        let mini = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Now playing: ")).firstMatch
-        XCTAssertTrue(mini.waitForExistence(timeout: 10)); mini.tap()
+        let minis = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Now playing: "))
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in minis.allElementsBoundByIndex.contains { $0.isHittable } }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 10), .completed)
+        guard let mini = minis.allElementsBoundByIndex.first(where: { $0.isHittable }) else { XCTFail("Mini-player must be visible and tappable"); return }
+        mini.tap()
         XCTAssertTrue(app.navigationBars["Now playing"].waitForExistence(timeout: 10))
         capture(app, "Player")
         app.buttons["Lyrics"].tap()

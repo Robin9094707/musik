@@ -1,6 +1,7 @@
 import XCTest
 @testable import SimplexMusic
 import UIKit
+import AVFoundation
 
 final class MusicTests: XCTestCase {
     func fixture(_ ext: String) throws -> URL {
@@ -102,6 +103,17 @@ final class MusicTests: XCTestCase {
         XCTAssertEqual(result.tracks.count, 1)
         XCTAssertEqual(result.tracks.first?.lyrics, "[00:00.12]Liedtext")
         XCTAssertTrue(result.failures.isEmpty)
+    }
+    @MainActor func testNativeM4APlaybackAndSeeking() throws {
+        try AVAudioSession.sharedInstance().setCategory(.playback)
+        try AVAudioSession.sharedInstance().setActive(true)
+        let engine = SMAudioEngine()
+        try engine.startURL(fixture("m4a"))
+        XCTAssertTrue(engine.playing)
+        engine.pause(); XCTAssertFalse(engine.playing)
+        XCTAssertTrue(engine.seek(0.12)); XCTAssertEqual(engine.time, 0.12, accuracy: 0.03)
+        try engine.resume(); XCTAssertTrue(engine.playing)
+        engine.stop(); XCTAssertFalse(engine.playing)
     }
     func testLanguageKeysHaveExactParity() {
         XCTAssertEqual(Set(L10n.en.keys), Set(L10n.de.keys))

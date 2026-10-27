@@ -1,6 +1,6 @@
 # Simplex Music Player
 
-A fully local iPhone/iPad music player in German and English, built with SwiftUI and iOS 26 Liquid Glass. No account, backend, Deezer catalogue or online search is used.
+A fully local iPhone/iPad music player in German and English, built with SwiftUI and iOS 26.2+ Liquid Glass. No account, backend, Deezer catalogue or online search is used.
 
 ## Features
 
@@ -18,7 +18,7 @@ SFBAudioEngine 0.14.0 and its codec dependencies cover MP3, AAC/M4A/ALAC, FLAC, 
 
 ## Build and validation
 
-Install Xcode 26+ and XcodeGen, then run:
+Install Xcode 26.2+ and XcodeGen, then run:
 
 ```sh
 python3 scripts/prepare_assets.py

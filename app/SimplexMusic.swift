@@ -25,7 +25,7 @@ struct RootView: View {
             Tab(t("playlists"), systemImage: "square.stack.fill") { PlaylistsView() }
             Tab(t("settings"), systemImage: "gearshape.fill") { SettingsView() }
         }
-        .tabViewBottomAccessory { if library.current != nil { MiniPlayer { player = true } } }
+        .tabViewBottomAccessory(isEnabled: library.current != nil) { MiniPlayer { player = true } }
         .sheet(isPresented: $picker) {
             DocumentPicker { urls in picker = false; Task { await library.add(urls) } }.ignoresSafeArea()
         }
