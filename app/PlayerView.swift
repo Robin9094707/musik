@@ -34,7 +34,7 @@ struct PlayerView: View {
                                 Menu {
                                     Button { editing = track } label: { Label(t("edit"), systemImage: "slider.horizontal.3") }
                                     ShareLink(item: library.url(track)) { Label(t("share"), systemImage: "square.and.arrow.up") }
-                                } label: { Image(systemName: "ellipsis").frame(width: 32, height: 40) }.accessibilityLabel(t("details"))
+                                } label: { Image(systemName: "ellipsis").frame(width: 32, height: 40) }.accessibilityLabel(t("details")).accessibilityIdentifier("playerDetailsMenu")
                             }
                             timeline
                             controls

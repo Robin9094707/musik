@@ -45,7 +45,9 @@ final class MusicUITests: XCTestCase {
         app.buttons["Lyrics"].tap()
         XCTAssertTrue(app.buttons["Your music. Your world."].waitForExistence(timeout: 10))
         capture(app, "Synchronized-Lyrics")
-        app.buttons["Details"].tap()
+        let details = app.buttons["playerDetailsMenu"]
+        XCTAssertTrue(details.waitForExistence(timeout: 10))
+        details.tap()
         app.buttons["Edit tags"].tap()
         XCTAssertTrue(app.navigationBars["Edit tags"].waitForExistence(timeout: 10))
         capture(app, "Tag-Editor")
