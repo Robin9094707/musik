@@ -72,7 +72,7 @@ import Combine
     func url(_ track: Track) -> URL { root.appendingPathComponent("Music").appendingPathComponent(track.filename) }
     func artworkURL(_ track: Track) -> URL? { track.artwork.map { root.appendingPathComponent("Artwork").appendingPathComponent($0) } }
     func persist() {
-        guard writesAllowed else { return }
+        guard writesAllowed, ready else { return }
         persistTask?.cancel()
         let snapshot = state
         persistTask = Task {

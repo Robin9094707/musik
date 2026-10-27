@@ -12,7 +12,7 @@ final class MusicTests: XCTestCase {
         return root
     }
     func testLRCWithOffsetsMultipleStampsAndMetadata() {
-        let lines = Lyrics.parse("[ar:Artist]\n[offset:-500]\n[00:01.50][00:03.125]Hallo 🌍\n[01:02]Ende\n[00:99]invalid")
+        let lines = Lyrics.parse("[ar:Artist]\n[offset: +500]\n[00:01.50][00:03.125]Hallo 🌍\n[01:02]Ende\n[00:99]invalid")
         XCTAssertEqual(lines.count, 3)
         XCTAssertEqual(lines.map(\.time), [1, 2.625, 61.5])
         XCTAssertEqual(lines[0].text, "Hallo 🌍")

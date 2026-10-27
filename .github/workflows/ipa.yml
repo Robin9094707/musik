@@ -2,8 +2,6 @@ name: Simplex Music — IPA & tests
 on:
   push:
     branches: [ios-native]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

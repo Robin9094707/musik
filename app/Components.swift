@@ -3,6 +3,7 @@ import UIKit
 import UniformTypeIdentifiers
 import MediaPlayer
 import AVKit
+import ImageIO
 
 struct DocumentPicker: UIViewControllerRepresentable {
     var multiple = true
@@ -41,18 +42,33 @@ struct Artwork: View {
     var track: Track?
     var size: CGFloat = 56
     var radius: CGFloat = 12
+    @State private var image: UIImage?
     var body: some View {
         ZStack {
             LinearGradient(colors: [.indigo, .purple.opacity(0.8), .cyan.opacity(0.65)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            if let track, let url = library.artworkURL(track) {
-                AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { symbol }
-            } else { symbol }
+            if let image { Image(uiImage: image).resizable().scaledToFill() } else { symbol }
         }
         .frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: radius))
         .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(.white.opacity(0.12), lineWidth: 0.7))
         .accessibilityHidden(true)
+        .task(id: track.flatMap { library.artworkURL($0) }) {
+            image = nil
+            guard let track, let url = library.artworkURL(track) else { return }
+            if let cached = ArtworkCache.shared.images.object(forKey: url as NSURL) { image = cached; return }
+            let loaded = await Task.detached(priority: .utility) { () -> UIImage? in
+                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                      let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 900, kCGImageSourceCreateThumbnailWithTransform: true] as CFDictionary) else { return nil }
+                return UIImage(cgImage: thumbnail)
+            }.value
+            guard !Task.isCancelled else { return }
+            if let loaded { ArtworkCache.shared.images.setObject(loaded, forKey: url as NSURL); image = loaded }
+        }
     }
     var symbol: some View { Image(systemName: "music.note").font(.system(size: size * 0.35, weight: .medium)).foregroundStyle(.white.opacity(0.9)) }
+}
+@MainActor final class ArtworkCache {
+    static let shared = ArtworkCache()
+    let images: NSCache<NSURL, UIImage> = { let cache = NSCache<NSURL, UIImage>(); cache.countLimit = 60; return cache }()
 }
 struct MusicBackground: View {
     @Environment(\.colorScheme) private var scheme

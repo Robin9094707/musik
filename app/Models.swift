@@ -87,7 +87,7 @@ enum Lyrics {
     /// LRC: repeated stamps, hundredths/milliseconds, metadata and global offsets.
     static func parse(_ text: String) -> [LyricLine] {
         let stamp = try! NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]"#)
-        let offsetRE = try! NSRegularExpression(pattern: #"\[offset:([+-]?\d+)\]"#, options: .caseInsensitive)
+        let offsetRE = try! NSRegularExpression(pattern: #"\[offset:\s*([+-]?\d+)\s*\]"#, options: .caseInsensitive)
         let ns = text as NSString
         var offset = 0.0
         if let m = offsetRE.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) {
@@ -107,7 +107,7 @@ enum Lyrics {
                 if m.range(at: 3).location != NSNotFound {
                     fraction = Double("0." + line.substring(with: m.range(at: 3))) ?? 0
                 }
-                lines.append(LyricLine(id: lines.count, time: max(0, minutes * 60 + seconds + fraction + offset), text: words))
+                lines.append(LyricLine(id: lines.count, time: max(0, minutes * 60 + seconds + fraction - offset), text: words))
             }
         }
         return lines.sorted { $0.time == $1.time ? $0.id < $1.id : $0.time < $1.time }
