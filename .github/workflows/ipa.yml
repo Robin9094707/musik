@@ -1,0 +1,80 @@
+name: Simplex Music — IPA & tests
+on:
+  push:
+    branches: [ios-native]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: simplex-music-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate icons and project
+        run: |
+          python3 scripts/prepare_assets.py
+          xcodegen generate
+      - name: Resolve audio engine
+        run: xcodebuild -resolvePackageDependencies -project SimplexMusic.xcodeproj -scheme SimplexMusic -clonedSourcePackagesDirPath build/SourcePackages
+      - name: Bundle license notices
+        run: |
+          python3 scripts/licenses.py
+          xcodegen generate
+      - name: Build unsigned iPhone app
+        run: |
+          set -o pipefail
+          xcodebuild -quiet -project SimplexMusic.xcodeproj -scheme SimplexMusic -configuration Release -sdk iphoneos -derivedDataPath build -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-device.log
+      - name: Run unit and UI tests
+        run: |
+          set -o pipefail
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,re,sys; d=json.load(sys.stdin); choices=[(tuple(map(int,re.findall(r"\d+",runtime))),x["name"]=="iPhone 17 Pro Max",x["udid"]) for runtime,group in d["devices"].items() for x in group if "iPhone" in x["name"]]; print(max(choices)[2])')
+          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
+          xcodebuild -project SimplexMusic.xcodeproj -scheme SimplexMusic -configuration Debug -destination "platform=iOS Simulator,arch=arm64,id=$DEVICE" -derivedDataPath build-simulator -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build-tests.log
+      - name: Capture simulator preview
+        run: |
+          # XCTest may run on a cloned device, leaving the selected device shut down.
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+          xcrun simctl install "$SIMULATOR_ID" build-simulator/Build/Products/Debug-iphonesimulator/SimplexMusic.app
+          xcrun simctl launch "$SIMULATOR_ID" de.robin.nexusmusic --ui-testing
+          sleep 3
+          xcrun simctl io "$SIMULATOR_ID" screenshot SimplexMusic-Library.png
+      - name: Package IPA and verify icons
+        run: |
+          python3 - <<'PY'
+          import plistlib,pathlib
+          p=pathlib.Path('build/Build/Products/Release-iphoneos/SimplexMusic.app/Info.plist')
+          info=plistlib.loads(p.read_bytes())
+          assert info['CFBundleDisplayName']=='Simplex Music Player'
+          assert set(info['CFBundleIcons']['CFBundleAlternateIcons']) == {'Ember','Glacier','Obsidian'}
+          assert info['UIBackgroundModes']==['audio']
+          PY
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/SimplexMusic.app Payload/
+          zip -qry Simplex-Music-Player-2.0.0-unsigned.ipa Payload
+          shasum -a 256 Simplex-Music-Player-2.0.0-unsigned.ipa > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Simplex-Music-Player-2.0.0-IPA
+          path: |
+            Simplex-Music-Player-2.0.0-unsigned.ipa
+            SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Export UI screenshots
+        if: always()
+        run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path Screenshots || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Simplex-Music-validation
+          path: |
+            build-device.log
+            build-tests.log
+            TestResults.xcresult
+            Screenshots/
+            SimplexMusic-Library.png
