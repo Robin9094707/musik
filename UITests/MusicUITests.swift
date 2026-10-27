@@ -20,6 +20,11 @@ final class MusicUITests: XCTestCase {
         XCTAssertTrue(cancel.waitForExistence(timeout: 20))
         capture(app, "Document-Picker")
         cancel.tap()
+        // Cancel must reset the presentation so a second import can be opened.
+        XCTAssertTrue(app.buttons["importMusic"].waitForExistence(timeout: 10))
+        app.buttons["importMusic"].tap()
+        XCTAssertTrue(cancel.waitForExistence(timeout: 20))
+        cancel.tap()
     }
     func testGermanSettingsAndIconChoices() {
         let app = launch("de")

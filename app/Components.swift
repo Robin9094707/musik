@@ -6,9 +6,10 @@ import AVKit
 import ImageIO
 
 struct DocumentPicker: UIViewControllerRepresentable {
+    @Environment(\.dismiss) private var dismiss
     var multiple = true
     var onPick: ([URL]) -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick, onCancel: { dismiss() }) }
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         // .item allows selection even when a provider reports audio as generic data.
         // asCopy downloads provider/iCloud files and gives us a readable local copy.
@@ -21,7 +22,9 @@ struct DocumentPicker: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
     final class Coordinator: NSObject, UIDocumentPickerDelegate {
         var onPick: ([URL]) -> Void
-        init(onPick: @escaping ([URL]) -> Void) { self.onPick = onPick }
+        var onCancel: () -> Void
+        init(onPick: @escaping ([URL]) -> Void, onCancel: @escaping () -> Void) { self.onPick = onPick; self.onCancel = onCancel }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { onCancel() }
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { onPick(urls) }
     }
 }
