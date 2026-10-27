@@ -39,7 +39,9 @@ final class MusicUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 15)); title.tap()
         let mini = app.buttons["openPlayerExpanded"]
         XCTAssertTrue(mini.waitForExistence(timeout: 15))
-        mini.tap()
+        // The native iOS 26 accessory can report an invalid AX activation point.
+        // Tap the actual element's center and still require the player to open.
+        mini.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(app.navigationBars["Now playing"].waitForExistence(timeout: 10))
         capture(app, "Player")
         app.buttons["Lyrics"].tap()
