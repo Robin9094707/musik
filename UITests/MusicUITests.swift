@@ -38,9 +38,18 @@ final class MusicUITests: XCTestCase {
         let title = app.staticTexts["Afterglow"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 15)); title.tap()
         let minis = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Now playing: "))
-        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in minis.allElementsBoundByIndex.contains { $0.isHittable } }, object: nil)
+        // The native tab accessory publishes an offscreen inline copy with an
+        // infinite frame. XCTest throws if isHittable is asked of that copy.
+        func visibleButtons() -> [XCUIElement] {
+            minis.allElementsBoundByIndex.filter { element in
+                let frame = element.frame
+                return !frame.isEmpty && !frame.isInfinite && !frame.isNull && frame.minX.isFinite && frame.minY.isFinite && app.frame.intersects(frame)
+            }
+        }
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !visibleButtons().isEmpty }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 10), .completed)
-        guard let mini = minis.allElementsBoundByIndex.first(where: { $0.isHittable }) else { XCTFail("Mini-player must be visible and tappable"); return }
+        guard let mini = visibleButtons().first else { XCTFail("Mini-player must be visible and tappable"); return }
+        XCTAssertTrue(mini.isHittable)
         mini.tap()
         XCTAssertTrue(app.navigationBars["Now playing"].waitForExistence(timeout: 10))
         capture(app, "Player")
