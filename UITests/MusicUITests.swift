@@ -16,11 +16,10 @@ final class MusicUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Afterglow"].firstMatch.waitForExistence(timeout: 10))
         capture(app, "Library-English")
         app.buttons["importMusic"].tap()
-        XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
-        capture(app, "Document-Picker")
-        // Dismiss the native picker, then verify settings and all four icon options.
         let cancel = app.buttons["Cancel"]
-        if cancel.waitForExistence(timeout: 5) { cancel.tap() }
+        XCTAssertTrue(cancel.waitForExistence(timeout: 20))
+        capture(app, "Document-Picker")
+        cancel.tap()
     }
     func testGermanSettingsAndIconChoices() {
         let app = launch("de")
