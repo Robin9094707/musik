@@ -39,9 +39,19 @@ final class MusicUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 15)); title.tap()
         let mini = app.buttons["openPlayerExpanded"]
         XCTAssertTrue(mini.waitForExistence(timeout: 15))
-        // The native iOS 26 accessory can report an invalid AX activation point.
-        // Tap the actual element's center and still require the player to open.
-        mini.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        // Native accessory coordinates can use an invalid AX activation point.
+        // Read its visible frame, then anchor the physical tap to the app window.
+        let visible = NSPredicate { _, _ in
+            guard mini.exists else { return false }
+            let frame = mini.frame
+            return !frame.isEmpty && !frame.isInfinite &&
+                app.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
+        }
+        expectation(for: visible, evaluatedWith: nil)
+        waitForExpectations(timeout: 15)
+        let frame = mini.frame
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
         XCTAssertTrue(app.navigationBars["Now playing"].waitForExistence(timeout: 10))
         capture(app, "Player")
         app.buttons["Lyrics"].tap()
