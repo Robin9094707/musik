@@ -38,6 +38,9 @@ jobs:
           xcodebuild -project SimplexMusic.xcodeproj -scheme SimplexMusic -configuration Debug -destination "platform=iOS Simulator,arch=arm64,id=$DEVICE" -derivedDataPath build-simulator -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build-tests.log
       - name: Capture simulator preview
         run: |
+          # XCTest may run on a cloned device, leaving the selected device shut down.
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+          xcrun simctl install "$SIMULATOR_ID" build-simulator/Build/Products/Debug-iphonesimulator/SimplexMusic.app
           xcrun simctl launch "$SIMULATOR_ID" de.robin.nexusmusic --ui-testing
           sleep 3
           xcrun simctl io "$SIMULATOR_ID" screenshot SimplexMusic-Library.png
