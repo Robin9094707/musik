@@ -85,6 +85,7 @@ struct MusicBackground: View {
 }
 struct MiniPlayer: View {
     @EnvironmentObject var library: MusicLibrary
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     var open: () -> Void
     var body: some View {
         if let track = library.current {
@@ -97,7 +98,7 @@ struct MiniPlayer: View {
                             Text(track.artist.isEmpty ? t("unknownArtist") : track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }.contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityLabel(t("nowPlaying") + ": " + track.title)
+                }.buttonStyle(.plain).accessibilityLabel(t("nowPlaying") + ": " + track.title).accessibilityIdentifier(placement == .inline ? "openPlayerInline" : "openPlayerExpanded")
                 Button { library.toggle() } label: { Image(systemName: library.playing ? "pause.fill" : "play.fill").font(.title3).frame(width: 38, height: 44) }.buttonStyle(.plain).accessibilityLabel(t(library.playing ? "pause" : "play"))
                 Button { library.next() } label: { Image(systemName: "forward.fill").frame(width: 34, height: 44) }.buttonStyle(.plain).accessibilityLabel(t("playNext"))
             }.padding(.horizontal, 14).padding(.vertical, 6)
