@@ -1,0 +1,10 @@
+build/
+build-simulator/
+*.xcodeproj/
+Payload/
+*.ipa
+*.xcresult/
+app/Info.plist
+app/Assets.xcassets/
+app/Acknowledgements.txt
+*.log

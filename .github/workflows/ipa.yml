@@ -1,27 +1,75 @@
-name: iOS IPA
+name: Simplex Music — IPA & tests
 on:
   push:
+    branches: [ios-native]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: simplex-music-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
-      - run: xcodegen generate
-      - name: Build unsigned app
+      - name: Generate icons and project
         run: |
-          xcodebuild -project NexusMusic.xcodeproj -scheme NexusMusic -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
-      - name: Package IPA
+          python3 scripts/prepare_assets.py
+          xcodegen generate
+      - name: Resolve audio engine
+        run: xcodebuild -resolvePackageDependencies -project SimplexMusic.xcodeproj -scheme SimplexMusic -clonedSourcePackagesDirPath build/SourcePackages
+      - name: Bundle license notices
         run: |
+          python3 scripts/licenses.py
+          xcodegen generate
+      - name: Build unsigned iPhone app
+        run: |
+          set -o pipefail
+          xcodebuild -project SimplexMusic.xcodeproj -scheme SimplexMusic -configuration Release -sdk iphoneos -derivedDataPath build -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-device.log
+      - name: Run unit and UI tests
+        run: |
+          set -o pipefail
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if "iPhone" in x["name"]))')
+          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
+          xcodebuild -project SimplexMusic.xcodeproj -scheme SimplexMusic -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build-simulator -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build-tests.log
+      - name: Capture simulator preview
+        run: |
+          xcrun simctl launch "$SIMULATOR_ID" de.robin.nexusmusic --ui-testing
+          sleep 3
+          xcrun simctl io "$SIMULATOR_ID" screenshot SimplexMusic-Library.png
+      - name: Package IPA and verify icons
+        run: |
+          python3 - <<'PY'
+          import plistlib,pathlib
+          p=pathlib.Path('build/Build/Products/Release-iphoneos/SimplexMusic.app/Info.plist')
+          info=plistlib.loads(p.read_bytes())
+          assert info['CFBundleDisplayName']=='Simplex Music Player'
+          assert set(info['CFBundleIcons']['CFBundleAlternateIcons']) == {'Ember','Glacier','Obsidian'}
+          assert info['UIBackgroundModes']==['audio']
+          PY
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/NexusMusic.app Payload/
-          zip -qr NexusMusic-unsigned.ipa Payload
+          cp -R build/Build/Products/Release-iphoneos/SimplexMusic.app Payload/
+          zip -qry Simplex-Music-Player-2.0.0-unsigned.ipa Payload
+          shasum -a 256 Simplex-Music-Player-2.0.0-unsigned.ipa > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: NexusMusic-unsigned-ipa
-          path: NexusMusic-unsigned.ipa
+          name: Simplex-Music-Player-2.0.0-IPA
+          path: |
+            Simplex-Music-Player-2.0.0-unsigned.ipa
+            SHA256SUMS.txt
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Simplex-Music-validation
+          path: |
+            build-device.log
+            build-tests.log
+            TestResults.xcresult
+            SimplexMusic-Library.png
