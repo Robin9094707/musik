@@ -19,6 +19,7 @@ import Combine
     @Published var importTotal = 0
     @Published var ready = false
     @Published var sleepDate: Date?
+    private var playbackEnded = false
     private var writesAllowed = true
     private var persistTask: Task<Void, Never>?
     private var timer: AnyCancellable?
@@ -38,7 +39,7 @@ import Combine
         engine.onEnd = { [weak self] in self?.finished() }
         engine.onError = { [weak self] message in self?.playing = false; self?.error = message }
         engine.onState = { [weak self] playing in self?.playing = playing; self?.nowPlaying() }
-        do { try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.allowAirPlay]) }
+        do { try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default) }
         catch { self.error = error.localizedDescription }
         timer = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect().sink { [weak self] _ in
             guard let self else { return }
@@ -102,13 +103,14 @@ import Combine
         do {
             try AVAudioSession.sharedInstance().setActive(true)
             try engine.startURL(url(track))
-            currentID = track.id; playing = true; position = 0; duration = track.duration
+            currentID = track.id; playbackEnded = false; playing = true; position = 0; duration = track.duration
             if let i = state.tracks.firstIndex(where: { $0.id == track.id }) { state.tracks[i].lastPlayed = Date(); persist() }
             nowPlaying(); UISelectionFeedbackGenerator().selectionChanged()
         } catch { self.error = error.localizedDescription; playing = false }
     }
     func pause() { engine.pause(); playing = false; nowPlaying() }
     func resume() {
+        if playbackEnded, let track = current { play(track); return }
         guard currentID != nil else { if let first = tracks.first { play(first, within: tracks) }; return }
         do { try AVAudioSession.sharedInstance().setActive(true); try engine.resume(); playing = true; nowPlaying() }
         catch { self.error = error.localizedDescription }
@@ -128,6 +130,7 @@ import Combine
         if i > 0, let track = tracks.first(where: { $0.id == queue[i - 1] }) { play(track) } else { seek(0) }
     }
     private func finished() {
+        playbackEnded = true
         if repeatMode == 2, let track = current { play(track) } else { next() }
     }
     func shuffle() {
